@@ -11,7 +11,7 @@ CORS(app)
 
 @app.route('/')
 def home():
-    return "✅ Spotmod backend is running!"
+    return "✅ Spotmod backend running!"
 
 @app.route('/download', methods=['POST'])
 def download():
@@ -24,41 +24,38 @@ def download():
         if not spotify_url:
             return jsonify({"error": "Missing Spotify URL"}), 400
 
-        # Get song info from Spotify
+        # Get Spotify title/artist
         res = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}")
         if res.status_code != 200:
             return jsonify({"error": f"Spotify oEmbed failed: {res.status_code}"}), 400
 
         info = res.json()
         title = info.get("title", "").strip()
-        if not title:
-            return jsonify({"error": "Could not extract song title from Spotify"}), 400
-
         artist = info.get("author_name", "Unknown Artist").strip()
 
-        # Create filenames
+        if not title:
+            return jsonify({"error": "Could not extract song title"}), 400
+
         search_query = f"{title} {artist}"
         webm_file = f"{uuid.uuid4()}.webm"
         mp3_file = f"{title} - {artist}.mp3"
 
-        # yt-dlp options with cookies.txt
+        # yt-dlp download
         ydl_opts = {
             "format": "bestaudio/best",
             "noplaylist": True,
             "outtmpl": webm_file,
             "quiet": True,
-            "cookiefile": "cookies.txt"  # <--- this line enables login
+            "cookiefile": "cookies.txt"  # Required to bypass YouTube bot check
         }
 
-        # Download using yt-dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"ytsearch:{search_query}"])
 
-        # Convert to mp3
+        # convert webm to mp3
         subprocess.run([
-            "ffmpeg", "-i", webm_file,
-            "-vn", "-ab", "192k", "-ar", "44100",
-            "-y", mp3_file
+            "ffmpeg", "-i", webm_file, "-vn",
+            "-ab", "192k", "-ar", "44100", "-y", mp3_file
         ], check=True)
 
         return send_file(mp3_file, as_attachment=True)
@@ -76,4 +73,4 @@ def download():
             pass
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8080, debug=True)
