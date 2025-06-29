@@ -1,6 +1,5 @@
 flask
 flask-cors
 requests
-yt-dlp
 soundcloud-lib
 gunicorn
