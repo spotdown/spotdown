@@ -6,4 +6,4 @@ mutagen
 requests
 jinja2
 python-dotenv
-gunicorn main.py:app
+gunicorn main:app
