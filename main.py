@@ -46,11 +46,12 @@ def download():
 
         # Download from YouTube
         ydl_opts = {
-            "format": "bestaudio/best",
-            "noplaylist": True,
-            "outtmpl": webm_file,
-            "quiet": True
-        }
+    "format": "bestaudio/best",
+    "noplaylist": True,
+    "outtmpl": webm_file,
+    "quiet": True,
+    "cookiefile": "cookies.txt"  # <== very important
+}
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"ytsearch:{search_query}"])
