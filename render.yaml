@@ -5,7 +5,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:10000
     envVars:
-      - key: SPOTIFY_CLIENT_ID
-        value: your_spotify_client_id
-      - key: SPOTIFY_CLIENT_SECRET
-        value: your_spotify_client_secret
+      - key: ad0720ec13024b85b3843b39cf06ee16
+        value: ad0720ec13024b85b3843b39cf06ee16
+      - key: f1469bb0f25d40959b903dd5618ea179
+        value: f1469bb0f25d40959b903dd5618ea179
