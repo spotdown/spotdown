@@ -1,11 +1,7 @@
 services:
   - type: web
-    name: spotify-downloader
+    name: spotmod
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
-    envVars:
-      - key: SPOTIPY_CLIENT_ID
-        value: ad0720ec13024b85b3843b39cf06ee16
-      - key: SPOTIPY_CLIENT_SECRET
-        value: f1469bb0f25d40959b903dd5618ea179
+    buildCommand: ./render-build.sh && pip install -r requirements.txt
+    startCommand: python main.py
+    envVars: []
