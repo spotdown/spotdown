@@ -1,4 +1,5 @@
-fastapi
-uvicorn
-spotipy
+flask
+flask-cors
+yt-dlp
 requests
+gunicorn
