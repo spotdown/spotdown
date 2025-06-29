@@ -46,15 +46,37 @@ def download():
 
         # Download from YouTube
         ydl_opts = {
-            "format": "bestaudio/best",
-            "noplaylist": True,
-            "outtmpl": webm_file,
-            "quiet": True
-        }
+    "format": "bestaudio/best",
+    "noplaylist": True,
+    "quiet": True,
+    "outtmpl": webm_file
+}
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([f"ytsearch:{search_query}"])
+search_query = f"{title} {artist} audio lyrics"
 
+with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    search_result = ydl.extract_info(f"ytsearch10:{search_query}", download=False)
+    safe_video = None
+
+    for entry in search_result.get("entries", []):
+        title_text = entry.get("title", "").lower()
+        uploader = entry.get("uploader", "").lower()
+        duration = entry.get("duration", 0)
+
+        if (
+            duration < 600 and
+            "explicit" not in title_text and
+            "vevo" not in uploader and
+            "official" not in title_text
+        ):
+            safe_video = entry["webpage_url"]
+            break
+
+    if not safe_video:
+        return jsonify({"error": "No clean YouTube video found"}), 404
+
+    # ✅ Now download safe video
+    ydl.download([safe_video])
         # Convert to MP3
         subprocess.run(["./ffmpeg", "-i", webm_file, "-vn", "-ab", "192k", "-ar", "44100", "-y", mp3_file])
 
