@@ -51,7 +51,11 @@ def download():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"ytsearch:{search_query}"])
 
-        subprocess.run(["ffmpeg", "-i", webm_file, "-vn", "-ab", "192k", "-ar", "44100", "-y", mp3_file], check=True)
+        subprocess.run([
+    "ffmpeg", "-i", webm_file,
+    "-vn", "-ab", "128k", "-ar", "44100",
+    "-y", mp3_file
+], check=True)
 
         return send_file(mp3_file, as_attachment=True)
 
