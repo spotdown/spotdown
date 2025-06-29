@@ -1,21 +1,18 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import requests
-import yt_dlp
 import os
 import uuid
-import subprocess
 
 app = Flask(__name__)
 CORS(app)
 
 @app.route('/')
 def home():
-    return "✅ Spotmod backend running!"
+    return "✅ JioSaavn MP3 backend running!"
 
 @app.route('/download', methods=['POST'])
 def download():
-    webm_file = None
     mp3_file = None
     try:
         data = request.get_json()
@@ -24,6 +21,7 @@ def download():
         if not spotify_url:
             return jsonify({"error": "Missing Spotify URL"}), 400
 
+        # Get metadata from Spotify oEmbed
         res = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}")
         if res.status_code != 200:
             return jsonify({"error": "Spotify oEmbed failed"}), 400
@@ -33,52 +31,45 @@ def download():
         artist = info.get("author_name", "Unknown Artist").strip()
 
         if not title:
-            return jsonify({"error": "Invalid song title from Spotify"}), 400
+            return jsonify({"error": "Missing title from Spotify"}), 400
 
-        search_query = f"{title} {artist} audio lyrics"
-        webm_file = f"{uuid.uuid4()}.webm"
-        mp3_file = f"{title} - {artist}.mp3"
+        search_query = f"{title} {artist}"
 
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "noplaylist": True,
-            "quiet": True,
-            "outtmpl": webm_file
-        }
+        # Search on JioSaavn unofficial API
+        search_url = f"https://saavn.dev/api/search/songs?query={search_query}"
+        search_res = requests.get(search_url).json()
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            search_result = ydl.extract_info(f"ytsearch10:{search_query}", download=False)
-            safe_video = None
+        if "data" not in search_res or not search_res["data"]["results"]:
+            return jsonify({"error": "No matching song found on JioSaavn"}), 404
 
-            for entry in search_result.get("entries", []):
-                title_text = entry.get("title", "").lower()
-                uploader = entry.get("uploader", "").lower()
-                duration = entry.get("duration", 0)
+        song = search_res["data"]["results"][0]
+        song_id = song["id"]
 
-                if (
-                    duration < 600 and
-                    "explicit" not in title_text and
-                    "vevo" not in uploader and
-                    "official" not in title_text
-                ):
-                    safe_video = entry["webpage_url"]
-                    break
+        # Fetch song details (MP3 URL)
+        detail_url = f"https://saavn.dev/api/songs?id={song_id}"
+        detail_res = requests.get(detail_url).json()
 
-            if not safe_video:
-                return jsonify({"error": "No safe YouTube result found"}), 404
+        if "data" not in detail_res or not detail_res["data"]:
+            return jsonify({"error": "Failed to fetch song details"}), 500
 
-            ydl.download([safe_video])
+        mp3_url = detail_res["data"][0]["downloadUrl"]["high"]
+        if not mp3_url:
+            return jsonify({"error": "No high quality MP3 found"}), 404
 
-        subprocess.run(["ffmpeg", "-i", webm_file, "-vn", "-ab", "192k", "-ar", "44100", "-y", mp3_file])
+        # Download MP3 file
+        mp3_file = f"{uuid.uuid4()}.mp3"
+        mp3_content = requests.get(mp3_url).content
+        with open(mp3_file, "wb") as f:
+            f.write(mp3_content)
+
         return send_file(mp3_file, as_attachment=True)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
     finally:
-        for f in [webm_file, mp3_file]:
-            if f and os.path.exists(f):
-                os.remove(f)
+        if mp3_file and os.path.exists(mp3_file):
+            os.remove(mp3_file)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
