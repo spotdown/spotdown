@@ -1,18 +1,19 @@
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, PlainTextResponse
 from downloader import download_spotify_track
 import os
 
 app = FastAPI()
 
-@app.get("/download")  # ✅ must be GET
-def download(url: str = Query(...)):
+@app.get("/download")
+@app.head("/download")  # ✅ handles HEAD requests from WordPress
+@app.options("/download")  # optional for preflight requests
+def download(request: Request, url: str = Query(default=None)):
     if not url:
-        raise HTTPException(status_code=400, detail="Missing 'url' parameter.")
+        return PlainTextResponse("Missing URL", status_code=400)
+
+    if request.method == "HEAD":
+        return PlainTextResponse("OK", status_code=200)
 
     mp3_path = download_spotify_track(url)
-
-    if not os.path.exists(mp3_path):
-        raise HTTPException(status_code=500, detail="MP3 file not found.")
-
-    return FileResponse(mp3_path, filename=os.path.basename(mp3_path), media_type="audio/mpeg")
+    return FileResponse(mp3_path, filename=os.path.basename(mp3_path), media_type='audio/mpeg')
