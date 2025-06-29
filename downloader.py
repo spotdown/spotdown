@@ -1,37 +1,48 @@
 # downloader.py
-import yt_dlp
+
+import os
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import os
+import yt_dlp
 
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+# Spotify authentication (uses environment variables)
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials())
 
-sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id=SPOTIFY_CLIENT_ID,
-    client_secret=SPOTIFY_CLIENT_SECRET
-))
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_spotify_track(url: str) -> str:
-    track_info = sp.track(url)
-    title = track_info["name"]
-    artist = track_info["artists"][0]["name"]
-    query = f"{title} {artist} audio"
+    if "track" not in url:
+        raise ValueError("Only Spotify track URLs are supported.")
 
-    outtmpl = f"downloads/{title}-{artist}.mp3"
+    # Fetch track metadata
+    track = sp.track(url)
+    title = track["name"]
+    artist = track["artists"][0]["name"]
+    search_query = f"{title} {artist} audio"
 
+    # Output path
+    safe_name = f"{title}-{artist}".replace(" ", "_").replace("/", "_")
+    output_path = os.path.join(DOWNLOAD_DIR, f"{safe_name}.mp3")
+
+    # yt-dlp download options
     ydl_opts = {
         'format': 'bestaudio/best',
-        'outtmpl': outtmpl,
+        'outtmpl': output_path,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        'quiet': True
+        'quiet': True,
+        'noplaylist': True
     }
 
+    # Download audio from YouTube
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([f"ytsearch1:{query}"])
+        ydl.download([f"ytsearch1:{search_query}"])
 
-    return outtmpl
+    if not os.path.exists(output_path):
+        raise FileNotFoundError("MP3 download failed.")
+
+    return output_path
