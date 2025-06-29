@@ -1,29 +1,19 @@
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from app.downloader import process_spotify_url
+# main.py
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import FileResponse
+from downloader import download_spotify_track
 import os
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+@app.get("/")
+def root():
+    return {"message": "Spotify Downloader is up."}
 
-
-@app.get("/", response_class=HTMLResponse)
-async def homepage(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.post("/download")
-async def download(request: Request, url: str = Form(...)):
+@app.get("/download")
+def download(url: str = Query(...)):
     try:
-        mp3_path = process_spotify_url(url)
-        filename = os.path.basename(mp3_path)
-        return FileResponse(path=mp3_path, filename=filename, media_type="audio/mpeg")
+        mp3_path = download_spotify_track(url)
+        return FileResponse(mp3_path, filename=os.path.basename(mp3_path), media_type='audio/mpeg')
     except Exception as e:
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "error": str(e)
-        })
+        raise HTTPException(status_code=400, detail=str(e))
