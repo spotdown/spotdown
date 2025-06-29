@@ -1,4 +1,4 @@
 fastapi
 uvicorn
 spotipy
-yt-dlp
+requests
