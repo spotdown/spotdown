@@ -56,12 +56,12 @@ def download():
     mp3_file = f"{song_name} - {artist_name}.mp3"
 
     ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': webm_file,
-        'noplaylist': True,
-        'quiet': True,
-        'cookies': 'cookies.txt',
-    }
+    'format': 'bestaudio/best',
+    'outtmpl': webm_file,
+    'noplaylist': True,
+    'quiet': True,
+    'cookies': 'cookies.txt',  # This line is critical
+}
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
