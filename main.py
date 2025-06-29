@@ -11,7 +11,7 @@ CORS(app)
 
 @app.route('/')
 def home():
-    return "✅ Spotmod backend running (Safe YouTube version)"
+    return "✅ Spotmod backend running on Render (YouTube safe-filter)"
 
 @app.route('/download', methods=['POST'])
 def download():
@@ -51,12 +51,10 @@ def download():
                     continue
                 if entry.get("duration", 0) > 600:
                     continue
-                if "official" in entry.get("title", "").lower():
-                    continue
                 try:
                     ydl.download([entry["webpage_url"]])
                     break
-                except Exception as e:
+                except:
                     continue
             else:
                 return jsonify({"error": "No playable YouTube video found"}), 404
@@ -66,11 +64,11 @@ def download():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
     finally:
-        for file in [webm_file, mp3_file]:
-            if file and os.path.exists(file):
-                os.remove(file)
+        for f in [webm_file, mp3_file]:
+            if f and os.path.exists(f):
+                os.remove(f)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
