@@ -34,29 +34,28 @@ def download():
             return jsonify({"error": "Missing title from Spotify"}), 400
 
         search_query = f"{title} {artist}"
-
-        # Search on JioSaavn unofficial API
         search_url = f"https://saavn.dev/api/search/songs?query={search_query}"
         search_res = requests.get(search_url).json()
 
         if "data" not in search_res or not search_res["data"]["results"]:
             return jsonify({"error": "No matching song found on JioSaavn"}), 404
 
-        song = search_res["data"]["results"][0]
-        song_id = song["id"]
+        mp3_url = None
+        for song in search_res["data"]["results"]:
+            song_id = song["id"]
+            detail_url = f"https://saavn.dev/api/songs?id={song_id}"
+            detail_res = requests.get(detail_url).json()
 
-        # Fetch song details (MP3 URL)
-        detail_url = f"https://saavn.dev/api/songs?id={song_id}"
-        detail_res = requests.get(detail_url).json()
+            if (
+                "data" in detail_res and detail_res["data"] and
+                detail_res["data"][0]["downloadUrl"]["high"]
+            ):
+                mp3_url = detail_res["data"][0]["downloadUrl"]["high"]
+                break  # found working MP3, stop loop
 
-        if "data" not in detail_res or not detail_res["data"]:
-            return jsonify({"error": "Failed to fetch song details"}), 500
-
-        mp3_url = detail_res["data"][0]["downloadUrl"]["high"]
         if not mp3_url:
-            return jsonify({"error": "No high quality MP3 found"}), 404
+            return jsonify({"error": "No playable MP3 found for any search result"}), 404
 
-        # Download MP3 file
         mp3_file = f"{uuid.uuid4()}.mp3"
         mp3_content = requests.get(mp3_url).content
         with open(mp3_file, "wb") as f:
