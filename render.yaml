@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: spotify-downloader
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:10000
+    envVars:
+      - key: SPOTIFY_CLIENT_ID
+        value: your_spotify_client_id
+      - key: SPOTIFY_CLIENT_SECRET
+        value: your_spotify_client_secret
