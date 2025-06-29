@@ -24,7 +24,7 @@ def download():
         if not spotify_url:
             return jsonify({"error": "Missing Spotify URL"}), 400
 
-        # Fetch metadata from Spotify
+        # Get song info from Spotify
         res = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}")
         if res.status_code != 200:
             return jsonify({"error": f"Spotify oEmbed failed: {res.status_code}"}), 400
@@ -36,24 +36,25 @@ def download():
 
         artist = info.get("author_name", "Unknown Artist").strip()
 
-        # Create file names
+        # Create filenames
         search_query = f"{title} {artist}"
         webm_file = f"{uuid.uuid4()}.webm"
         mp3_file = f"{title} - {artist}.mp3"
 
-        # yt-dlp options
+        # yt-dlp options with cookies.txt
         ydl_opts = {
             "format": "bestaudio/best",
             "noplaylist": True,
             "outtmpl": webm_file,
             "quiet": True,
+            "cookiefile": "cookies.txt"  # <--- this line enables login
         }
 
-        # Download audio from YouTube
+        # Download using yt-dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"ytsearch:{search_query}"])
 
-        # Convert to mp3 using system ffmpeg (no ./)
+        # Convert to mp3
         subprocess.run([
             "ffmpeg", "-i", webm_file,
             "-vn", "-ab", "192k", "-ar", "44100",
