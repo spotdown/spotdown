@@ -21,7 +21,6 @@ def download():
         if not spotify_url:
             return jsonify({"error": "Missing Spotify URL"}), 400
 
-        # Get metadata from Spotify oEmbed
         res = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}")
         if res.status_code != 200:
             return jsonify({"error": "Spotify oEmbed failed"}), 400
@@ -46,15 +45,17 @@ def download():
             detail_url = f"https://saavn.dev/api/songs?id={song_id}"
             detail_res = requests.get(detail_url).json()
 
-            if (
-                "data" in detail_res and detail_res["data"] and
-                detail_res["data"][0]["downloadUrl"]["high"]
-            ):
-                mp3_url = detail_res["data"][0]["downloadUrl"]["high"]
-                break  # found working MP3, stop loop
+            if "data" not in detail_res or not detail_res["data"]:
+                continue
+
+            download = detail_res["data"][0].get("downloadUrl", {})
+            mp3_url = download.get("high") or download.get("medium") or download.get("low")
+
+            if mp3_url:
+                break  # Found a playable MP3
 
         if not mp3_url:
-            return jsonify({"error": "No playable MP3 found for any search result"}), 404
+            return jsonify({"error": "No playable MP3 found in any quality"}), 404
 
         mp3_file = f"{uuid.uuid4()}.mp3"
         mp3_content = requests.get(mp3_url).content
