@@ -3,9 +3,9 @@ services:
     name: spotify-downloader
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:10000
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
     envVars:
-      - key: ad0720ec13024b85b3843b39cf06ee16
+      - key: SPOTIPY_CLIENT_ID
         value: ad0720ec13024b85b3843b39cf06ee16
-      - key: f1469bb0f25d40959b903dd5618ea179
+      - key: SPOTIPY_CLIENT_SECRET
         value: f1469bb0f25d40959b903dd5618ea179
