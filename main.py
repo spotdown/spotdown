@@ -1,13 +1,13 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
-import requests, uuid, os
+import requests, os, uuid
 
 app = Flask(__name__)
 CORS(app)
 
 @app.route('/')
 def home():
-    return "✅ Audius-only backend is running!"
+    return "✅ Archive.org backend running!"
 
 @app.route('/download', methods=['POST'])
 def download():
@@ -18,35 +18,43 @@ def download():
         if not spotify_url:
             return jsonify({"error": "Missing Spotify URL"}), 400
 
-        # 1. Get title/artist from Spotify
-        info = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}").json()
-        title = info.get("title", "").strip()
-        artist = info.get("author_name", "Unknown").strip()
+        info = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}")
+        if info.status_code != 200:
+            return jsonify({"error": "Could not fetch Spotify info"}), 400
+
+        title = info.json().get("title", "").strip()
+        artist = info.json().get("author_name", "").strip()
         query = f"{title} {artist}"
 
-        # 2. Search Audius
-        search = requests.get(f"https://discoveryprovider.audius.co/v1/tracks/search", params={"query": query, "app_name": "spotmod"}).json()
-        results = search.get("data", [])
-
+        search = requests.get(
+            "https://archive.org/advancedsearch.php",
+            params={
+                "q": query,
+                "fl[]": "identifier,format",
+                "rows": 5,
+                "output": "json"
+            }
+        )
+        results = search.json().get("response", {}).get("docs", [])
         if not results:
-            return jsonify({"error": "No Audius track found"}), 404
+            return jsonify({"error": "No audio found on archive.org"}), 404
 
-        # 3. Get streaming URL
-        stream_url = results[0].get("stream_url")
-        if not stream_url:
-            return jsonify({"error": "No streaming URL in track"}), 500
+        file_id, fmt = results[0]["identifier"], results[0]["format"][0]
+        mp3_url = f"https://archive.org/download/{file_id}/{file_id}.{fmt.lower()}"
+        mp3_file = f"{uuid.uuid4()}.{fmt.lower()}"
 
-        # 4. Download MP3 and return
-        mp3_file = f"{uuid.uuid4()}.mp3"
-        content = requests.get(stream_url, headers={"Accept": "*/*"}).content
+        dl = requests.get(mp3_url, stream=True)
+        if dl.status_code != 200:
+            return jsonify({"error": "Failed downloading archive.org audio"}), 500
+
         with open(mp3_file, "wb") as f:
-            f.write(content)
+            for chunk in dl.iter_content(1024 * 1024):
+                f.write(chunk)
 
         return send_file(mp3_file, as_attachment=True)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
     finally:
         if mp3_file and os.path.exists(mp3_file):
             os.remove(mp3_file)
