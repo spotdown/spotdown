@@ -1,6 +1,0 @@
-Flask
-flask-cors
-spotipy
-yt-dlp
-requests
-gunicorn
