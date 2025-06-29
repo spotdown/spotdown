@@ -11,7 +11,7 @@ CORS(app)
 
 @app.route('/')
 def home():
-    return "✅ Spotmod backend running!"
+    return "✅ Spotmod backend is running!"
 
 @app.route('/download', methods=['POST'])
 def download():
@@ -24,40 +24,41 @@ def download():
         if not spotify_url:
             return jsonify({"error": "Missing Spotify URL"}), 400
 
-        # Fetch metadata
+        # Fetch metadata from Spotify
         res = requests.get(f"https://open.spotify.com/oembed?url={spotify_url}")
         if res.status_code != 200:
             return jsonify({"error": f"Spotify oEmbed failed: {res.status_code}"}), 400
 
         info = res.json()
-
-        # Title is required
         title = info.get("title", "").strip()
         if not title:
             return jsonify({"error": "Could not extract song title from Spotify"}), 400
 
-        # Artist is optional
         artist = info.get("author_name", "Unknown Artist").strip()
 
-        # Prepare file names
+        # Create file names
         search_query = f"{title} {artist}"
         webm_file = f"{uuid.uuid4()}.webm"
         mp3_file = f"{title} - {artist}.mp3"
 
-        # Download from YouTube
-       ydl_opts = {
-    "format": "bestaudio/best",
-    "noplaylist": True,
-    "outtmpl": webm_file,
-    "quiet": True,
-    "cookiefile": "cookies.txt"
-}
+        # yt-dlp options
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "noplaylist": True,
+            "outtmpl": webm_file,
+            "quiet": True,
+        }
 
+        # Download audio from YouTube
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"ytsearch:{search_query}"])
 
-        # Convert to MP3
-        subprocess.run(["./ffmpeg", "-i", webm_file, "-vn", "-ab", "192k", "-ar", "44100", "-y", mp3_file])
+        # Convert to mp3 using system ffmpeg (no ./)
+        subprocess.run([
+            "ffmpeg", "-i", webm_file,
+            "-vn", "-ab", "192k", "-ar", "44100",
+            "-y", mp3_file
+        ], check=True)
 
         return send_file(mp3_file, as_attachment=True)
 
